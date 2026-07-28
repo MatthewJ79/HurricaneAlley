@@ -6,6 +6,11 @@ import {
   fetchCurrentStorms,
 } from "./nhc.mjs";
 import { readCache, writeCache } from "./store.mjs";
+import {
+  getSatelliteTile,
+  prewarmStormSatelliteTiles,
+  satelliteTileRequest,
+} from "./satellite.mjs";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const POLL_INTERVAL_MS = Number(process.env.NHC_POLL_INTERVAL_MS ?? 120_000);
@@ -33,15 +38,15 @@ async function refresh() {
 
   refreshInFlight = (async () => {
     lastAttemptAt = new Date().toISOString();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const result = await fetchCurrentStorms({
-        signal: controller.signal,
-        etag: validators.etag,
-        lastModified: validators.lastModified,
-      });
+      const result = await withRequestTimeout((signal) =>
+        fetchCurrentStorms({
+          signal,
+          etag: validators.etag,
+          lastModified: validators.lastModified,
+        }),
+      );
 
       if (!result.notModified) {
         validators = {
@@ -52,9 +57,9 @@ async function refresh() {
           result.data.storms.map(async (storm) => {
             let enriched = storm;
             try {
-              enriched = await enrichStormForecast(enriched, {
-                signal: controller.signal,
-              });
+              enriched = await withRequestTimeout((signal) =>
+                enrichStormForecast(enriched, { signal }),
+              );
             } catch (error) {
               console.error(
                 `[NHC] Forecast enrichment failed for ${storm.id}: ${error.message}`,
@@ -63,9 +68,9 @@ async function refresh() {
             }
 
             try {
-              enriched = await enrichStormCone(enriched, {
-                signal: controller.signal,
-              });
+              enriched = await withRequestTimeout((signal) =>
+                enrichStormCone(enriched, { signal }),
+              );
             } catch (error) {
               console.error(
                 `[NHC] Cone enrichment failed for ${storm.id}: ${error.message}`,
@@ -74,9 +79,10 @@ async function refresh() {
             }
 
             try {
-              return await enrichStormModels(enriched, {
-                signal: controller.signal,
-              });
+              return await withRequestTimeout(
+                (signal) => enrichStormModels(enriched, { signal }),
+                Math.max(30_000, REQUEST_TIMEOUT_MS),
+              );
             } catch (error) {
               console.error(
                 `[NHC] Model guidance enrichment failed for ${storm.id}: ${error.message}`,
@@ -92,6 +98,9 @@ async function refresh() {
           stale: false,
         };
         await writeCache(snapshot);
+        void prewarmStormSatelliteTiles(storms).catch((error) => {
+          console.error(`[Satellite] Prewarm failed: ${error.message}`);
+        });
       } else if (snapshot) {
         snapshot = { ...snapshot, status: "live", stale: false };
       }
@@ -111,12 +120,21 @@ async function refresh() {
       console.error(`[NHC] ${lastError}`);
       return snapshot;
     } finally {
-      clearTimeout(timeout);
       refreshInFlight = null;
     }
   })();
 
   return refreshInFlight;
+}
+
+async function withRequestTimeout(callback, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await callback(controller.signal);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function start() {
@@ -170,6 +188,43 @@ async function start() {
       return;
     }
 
+    const satelliteMatch = url.pathname.match(
+      /^\/v1\/satellite\/(east|west)\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.png$/,
+    );
+    if (satelliteMatch) {
+      const tileRequest = satelliteTileRequest({
+        source: satelliteMatch[1],
+        time: satelliteMatch[2],
+        zoom: satelliteMatch[3],
+        row: satelliteMatch[4],
+        column: satelliteMatch[5],
+      });
+      if (!tileRequest) {
+        json(response, 400, { error: "Invalid satellite tile request" });
+        return;
+      }
+
+      try {
+        const tile = await getSatelliteTile(tileRequest);
+        response.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": tileRequest.immutable
+            ? "public, max-age=86400, immutable"
+            : "public, max-age=120",
+          "Content-Length": tile.body.length,
+          "Content-Type": tile.contentType,
+          "X-Hurricane-Alley-Cache": tile.cacheStatus,
+        });
+        response.end(tile.body);
+      } catch (error) {
+        json(response, 502, {
+          error: "Satellite imagery is temporarily unavailable",
+          detail: error.message,
+        });
+      }
+      return;
+    }
+
     const stormMatch = url.pathname.match(/^\/v1\/storms\/([a-z0-9]+)$/i);
     if (stormMatch) {
       const storm = snapshot?.storms?.find(
@@ -193,7 +248,12 @@ async function start() {
 
     json(response, 404, {
       error: "Not found",
-      routes: ["/health", "/v1/storms", "/v1/storms/:id"],
+      routes: [
+        "/health",
+        "/v1/storms",
+        "/v1/storms/:id",
+        "/v1/satellite/:source/:time/:z/:y/:x.png",
+      ],
     });
   });
 

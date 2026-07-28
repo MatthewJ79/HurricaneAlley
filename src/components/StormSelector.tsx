@@ -6,10 +6,12 @@ export function StormSelector({
   storms,
   selectedStormId,
   onSelect,
+  compact = false,
 }: {
   storms: LiveStorm[];
   selectedStormId: string | null;
   onSelect: (stormId: string) => void;
+  compact?: boolean;
 }) {
   const { theme } = useTheme();
   if (storms.length < 2) return null;
@@ -18,8 +20,11 @@ export function StormSelector({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.content}
-      style={styles.scroll}
+      contentContainerStyle={[
+        styles.content,
+        compact && styles.compactContent,
+      ]}
+      style={[styles.scroll, compact && styles.compactScroll]}
     >
       {storms.map((storm) => {
         const selected = storm.id === selectedStormId;
@@ -32,6 +37,7 @@ export function StormSelector({
             onPress={() => onSelect(storm.id)}
             style={[
               styles.option,
+              compact && styles.compactOption,
               {
                 borderColor: selected ? theme.cyan : theme.border,
                 backgroundColor: selected ? `${theme.cyan}1A` : theme.surface,
@@ -60,6 +66,8 @@ export function StormSelector({
 const styles = StyleSheet.create({
   scroll: { height: 69, maxHeight: 69, marginBottom: 14, flexGrow: 0 },
   content: { height: 55, paddingHorizontal: 20, gap: 9 },
+  compactScroll: { width: 292, height: 46, maxHeight: 46, marginBottom: 0 },
+  compactContent: { height: 42, paddingHorizontal: 0, gap: 7 },
   option: {
     minWidth: 132,
     minHeight: 55,
@@ -68,6 +76,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 13,
   },
+  compactOption: { minWidth: 132, minHeight: 42, borderRadius: 10 },
   name: { fontSize: 12, fontWeight: "800" },
   meta: { marginTop: 4, fontSize: 8, fontWeight: "700" },
 });

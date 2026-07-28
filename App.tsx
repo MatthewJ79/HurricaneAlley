@@ -3,12 +3,10 @@ import { StyleSheet, View } from "react-native";
 import { BottomTabs, DataStatusBanner } from "./src/components/Chrome";
 import { useStormFeed } from "./src/hooks/useStormFeed";
 import { AdvisoryScreen } from "./src/screens/AdvisoryScreen";
-import { AlertsScreen } from "./src/screens/AlertsScreen";
-import { DataScreen } from "./src/screens/DataScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { KitScreen } from "./src/screens/KitScreen";
 import { PrepareScreen } from "./src/screens/PrepareScreen";
-import { TrackScreen } from "./src/screens/TrackScreen";
+import { StormReportScreen } from "./src/screens/StormReportScreen";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import type { LiveStorm, ScreenName } from "./src/types";
 
@@ -31,7 +29,7 @@ function HurricaneAlleyApp() {
   const back = () => setScreen(previousScreen === "advisory" || previousScreen === "kit" ? "home" : previousScreen);
   const openStorm = (storm: LiveStorm) => {
     setSelectedStormId(storm.id);
-    navigate("track");
+    navigate("storm");
   };
   const selectStorm = (stormId: string) => setSelectedStormId(stormId);
   const detailScreen = screen === "advisory" || screen === "kit";
@@ -47,26 +45,13 @@ function HurricaneAlleyApp() {
             openStorm={openStorm}
           />
         ) : null}
-        {screen === "track" ? (
-          <TrackScreen
+        {screen === "storm" ? (
+          <StormReportScreen
             storm={selectedStorm}
             storms={stormFeed.storms}
             onSelectStorm={selectStorm}
-          />
-        ) : null}
-        {screen === "data" ? (
-          <DataScreen
-            storm={selectedStorm}
-            storms={stormFeed.storms}
-            onSelectStorm={selectStorm}
-          />
-        ) : null}
-        {screen === "alerts" ? (
-          <AlertsScreen
-            navigate={navigate}
-            storm={selectedStorm}
-            storms={stormFeed.storms}
-            onSelectStorm={selectStorm}
+            onBack={() => setScreen("home")}
+            onPrepare={() => navigate("prepare")}
           />
         ) : null}
         {screen === "prepare" ? <PrepareScreen navigate={navigate} /> : null}
@@ -81,13 +66,10 @@ function HurricaneAlleyApp() {
 function initialScreen(): ScreenName {
   if (typeof window === "undefined") return "home";
   const candidate = new URLSearchParams(window.location.search).get("screen");
-  const screens: ScreenName[] = [
-    "home",
-    "track",
-    "data",
-    "alerts",
-    "prepare",
-  ];
+  if (candidate === "track" || candidate === "data" || candidate === "alerts") {
+    return "storm";
+  }
+  const screens: ScreenName[] = ["home", "storm", "prepare"];
   return screens.includes(candidate as ScreenName)
     ? (candidate as ScreenName)
     : "home";

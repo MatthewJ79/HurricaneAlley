@@ -2,16 +2,14 @@ export type ThemeMode = "light" | "dark";
 
 export type ScreenName =
   | "home"
-  | "track"
-  | "data"
-  | "alerts"
+  | "storm"
   | "prepare"
   | "advisory"
   | "kit";
 
 export type TabName = Extract<
   ScreenName,
-  "home" | "track" | "data" | "alerts" | "prepare"
+  "home" | "prepare"
 >;
 
 export type ForecastPoint = {

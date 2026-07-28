@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { ComponentProps, PropsWithChildren } from "react";
+import type { ComponentProps, PropsWithChildren, ReactNode } from "react";
 import {
   Platform,
   Pressable,
@@ -17,9 +17,6 @@ type IconName = ComponentProps<typeof Ionicons>["name"];
 
 const tabs: { id: TabName; label: string; icon: IconName; active: IconName }[] = [
   { id: "home", label: "Home", icon: "home-outline", active: "home" },
-  { id: "track", label: "Track", icon: "location-outline", active: "location" },
-  { id: "data", label: "Data", icon: "stats-chart-outline", active: "stats-chart" },
-  { id: "alerts", label: "Alerts", icon: "alert-circle-outline", active: "alert-circle" },
   { id: "prepare", label: "Prepare", icon: "shield-checkmark-outline", active: "shield-checkmark" },
 ];
 
@@ -60,14 +57,25 @@ export function ScreenHeader({
   title,
   subtitle,
   onBack,
+  rightContent,
+  contentWidth,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
+  rightContent?: ReactNode;
+  contentWidth?: number;
 }) {
   const { theme, mode, toggleMode } = useTheme();
   return (
-    <View style={styles.header}>
+    <View
+      style={[
+        styles.header,
+        contentWidth === undefined
+          ? null
+          : { width: contentWidth, alignSelf: "center" },
+      ]}
+    >
       <View style={styles.headerTitleRow}>
         {onBack ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={10}>
@@ -79,15 +87,20 @@ export function ScreenHeader({
           {subtitle ? <Text style={[styles.headerSubtitle, { color: theme.textMuted }]}>{subtitle}</Text> : null}
         </View>
       </View>
-      {!onBack ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Use ${mode === "dark" ? "light" : "dark"} theme`}
-          onPress={toggleMode}
-          style={[styles.themeButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-        >
-          <Ionicons name={mode === "dark" ? "sunny-outline" : "moon-outline"} color={theme.text} size={22} />
-        </Pressable>
+      {rightContent || !onBack ? (
+        <View style={styles.headerActions}>
+          {rightContent}
+          {!onBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Use ${mode === "dark" ? "light" : "dark"} theme`}
+              onPress={toggleMode}
+              style={[styles.themeButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
+              <Ionicons name={mode === "dark" ? "sunny-outline" : "moon-outline"} color={theme.text} size={22} />
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -181,6 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerTitle: { fontSize: 25, lineHeight: 31, fontWeight: "800", letterSpacing: -0.7 },
   headerSubtitle: { fontSize: 13, marginTop: 3 },
   themeButton: {
@@ -201,7 +215,13 @@ const styles = StyleSheet.create({
       android: { paddingBottom: 4 },
     }),
   },
-  tabs: { height: 72, flexDirection: "row" },
+  tabs: {
+    width: "100%",
+    maxWidth: 520,
+    height: 72,
+    alignSelf: "center",
+    flexDirection: "row",
+  },
   tab: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4 },
   tabLabel: { fontSize: 9, fontWeight: "700", textTransform: "uppercase" },
   iconCircle: {

@@ -84,8 +84,11 @@ npx.cmd expo run:android
 
 ## Current scope
 
-The home and Track screens use live normalized storm summaries, official NHC
-forecast points, and the official cone. Model, advisory, alert, and evacuation
-screens remain historical demonstrations until their individual source
-adapters are implemented. Privacy-first location identification is planned
+Home lists active NHC storms without mounting a separate map for every card.
+Selecting a storm opens one unified report with internal Summary, Track & Cone,
+Models, and Alerts & Products views. The report mounts only the map required by
+the selected view and combines live normalized storm summaries, official NHC
+forecast points and cone geometry, public ATCF guidance, and linked official
+products. Privacy-first location identification is planned for a later alert
+phase.
 before location-matched warnings and evacuation information.

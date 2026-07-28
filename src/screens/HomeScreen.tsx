@@ -1,18 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ActiveStormMap } from "../components/ActiveStormMap";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Screen, ScreenHeader } from "../components/Chrome";
-import { Eyebrow, Section, SectionTitle } from "../components/Primitives";
-import { StormMap } from "../components/StormMap";
 import { useTheme } from "../theme/ThemeProvider";
 import type { LiveStorm, ScreenName, StormFeedState } from "../types";
-
-const quickActions = [
-  ["track", "pulse-outline", "Track"],
-  ["data", "analytics-outline", "Models"],
-  ["alerts", "alert-circle-outline", "Alerts"],
-  ["prepare", "close-circle-outline", "Prepare"],
-] as const;
 
 export function HomeScreen({
   navigate,
@@ -24,209 +20,195 @@ export function HomeScreen({
   openStorm: (storm: LiveStorm) => void;
 }) {
   const { theme } = useTheme();
-  const showLive = feed.status === "live" || feed.status === "cached";
+  const { width } = useWindowDimensions();
+  const desktop = width >= 900;
+  const contentWidth = desktop ? Math.min(width * 0.8, 1200) : width - 40;
+  const cardWidth =
+    desktop && feed.storms.length > 1
+      ? (contentWidth - 10) / 2
+      : contentWidth;
+  const loading = feed.status === "loading";
+  const connected = feed.status === "live" || feed.status === "cached";
 
   return (
     <Screen>
-      <ScreenHeader title="Active Storms" />
+      <ScreenHeader
+        title="Active Storms"
+        subtitle="Official NOAA/NHC tropical cyclone reports"
+        contentWidth={desktop ? contentWidth : undefined}
+        rightContent={
+          desktop ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigate("prepare")}
+              style={[
+                styles.headerAction,
+                { borderColor: theme.border, backgroundColor: theme.surface },
+              ]}
+            >
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={18}
+                color={theme.cyan}
+              />
+              <Text style={[styles.headerActionText, { color: theme.text }]}>
+                Prepare
+              </Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
 
-      {showLive ? (
-        feed.storms.length > 0 ? (
-          <View style={styles.liveStorms}>
+      <View style={[styles.content, { width: contentWidth }]}>
+        <View style={styles.listHeading}>
+          <Text style={[styles.listTitle, { color: theme.text }]}>
+            {loading
+              ? "Checking for active storms"
+              : connected && feed.storms.length > 0
+                ? `${feed.storms.length} active ${
+                    feed.storms.length === 1 ? "storm" : "storms"
+                  }`
+                : "Current Atlantic and Pacific activity"}
+          </Text>
+          <Text style={[styles.listMeta, { color: theme.textMuted }]}>
+            {feed.fetchedAt
+              ? `NHC feed updated ${formatUpdated(feed.fetchedAt)}`
+              : "Live NHC connection"}
+          </Text>
+        </View>
+
+        {connected && feed.storms.length > 0 ? (
+          <View style={styles.stormGrid}>
             {feed.storms.map((storm) => (
-              <LiveStormCard key={storm.id} storm={storm} openStorm={openStorm} />
+              <StormCard
+                key={storm.id}
+                storm={storm}
+                width={cardWidth}
+                onOpen={() => openStorm(storm)}
+              />
             ))}
           </View>
         ) : (
           <View
             style={[
-              styles.emptyCard,
+              styles.empty,
               { backgroundColor: theme.surface, borderColor: theme.border },
             ]}
           >
-            <Ionicons name="checkmark-circle-outline" size={30} color={theme.cyan} />
+            <Ionicons
+              name={
+                loading
+                  ? "sync-outline"
+                  : connected
+                    ? "checkmark-circle-outline"
+                    : "cloud-offline-outline"
+              }
+              size={34}
+              color={connected ? theme.cyan : theme.warning}
+            />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              No active NHC tropical cyclones
+              {loading
+                ? "Loading current NHC activity"
+                : connected
+                  ? "No current active storms"
+                  : "Live storm data is temporarily unavailable"}
             </Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              Development areas from the Tropical Weather Outlook are the next feed.
+              {connected
+                ? "When the NHC publishes an active tropical cyclone, its complete report will appear here."
+                : "Hurricane Alley will restore the active-storm list when the official feed reconnects."}
             </Text>
           </View>
-        )
-      ) : (
-        <HistoricalDemoCard navigate={navigate} />
-      )}
+        )}
 
-      <View style={styles.quickGrid}>
-        {quickActions.map(([screen, icon, label]) => (
-          <Pressable
-            key={screen}
-            onPress={() => navigate(screen)}
-            style={[
-              styles.quickAction,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-            ]}
-          >
-            <Ionicons name={icon} size={25} color={theme.cyan} />
-            <Text style={[styles.quickLabel, { color: theme.textMuted }]}>
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Section>
-        <SectionTitle
-          title={showLive ? "Data connection" : "Historical demonstration"}
-          eyebrow={
-            showLive
-              ? `${feed.storms.length} active NHC storm${feed.storms.length === 1 ? "" : "s"}`
-              : "Live API unavailable"
-          }
-        />
         <View
           style={[
-            styles.statusCard,
+            styles.homeNote,
             { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         >
-          <Ionicons
-            name={showLive ? "radio-outline" : "cloud-offline-outline"}
-            size={24}
-            color={showLive ? theme.cyan : theme.warning}
-          />
-          <View style={styles.statusCopy}>
-            <Text style={[styles.statusTitle, { color: theme.text }]}>
-              {showLive
-                ? "Official NHC summaries connected"
-                : "Showing historical data safely"}
-            </Text>
-            <Text style={[styles.statusText, { color: theme.textMuted }]}>
-              {showLive
-                ? "Forecast tracks, cones, public ATCF guidance, advisories, and available NHC warning products are connected."
-                : "Start the Hurricane Alley API to replace this card with current NHC storm information."}
-            </Text>
-          </View>
+          <Ionicons name="radio-outline" size={20} color={theme.cyan} />
+          <Text style={[styles.homeNoteText, { color: theme.textMuted }]}>
+            Select a storm to open one complete report containing its summary,
+            official track and cone, model guidance, alerts, and NHC products.
+          </Text>
         </View>
-      </Section>
+      </View>
     </Screen>
   );
 }
 
-function LiveStormCard({
+function StormCard({
   storm,
-  openStorm,
+  width,
+  onOpen,
 }: {
   storm: LiveStorm;
-  openStorm: (storm: LiveStorm) => void;
-}) {
-  const { theme } = useTheme();
-  const issued = storm.updatedAt
-    ? new Date(storm.updatedAt).toLocaleString()
-    : "Time unavailable";
-
-  return (
-    <View
-      style={[
-        styles.stormCard,
-        { backgroundColor: theme.surface, borderColor: theme.redBright },
-      ]}
-    >
-      <View style={styles.cardHeading}>
-        <View style={styles.stormHeadingCopy}>
-          <Text style={[styles.stormName, { color: theme.text }]}>
-            {storm.classification} {storm.name}
-          </Text>
-          <Text style={[styles.basin, { color: theme.textMuted }]}>
-            {storm.basin.toUpperCase()} · {storm.id.toUpperCase()}
-          </Text>
-        </View>
-        <Text
-          style={[
-            styles.liveBadge,
-            { color: theme.cyan, borderColor: theme.cyan },
-          ]}
-        >
-          LIVE NHC
-        </Text>
-      </View>
-      <View style={styles.metrics}>
-        <Metric
-          label="WIND"
-          value={storm.wind.mph === null ? "—" : `${storm.wind.mph} MPH`}
-          danger
-        />
-        <Metric label="MOTION" value={formatMotion(storm)} />
-        <Metric
-          label="PRESSURE"
-          value={storm.pressureMb === null ? "—" : `${storm.pressureMb} MB`}
-        />
-      </View>
-      <Text style={[styles.position, { color: theme.textMuted }]}>
-        {storm.center.displayLatitude ?? "—"} ·{" "}
-        {storm.center.displayLongitude ?? "—"}
-      </Text>
-      <View style={styles.liveMap}>
-        <ActiveStormMap storm={storm} height={220} />
-      </View>
-      <Text style={[styles.issued, { color: theme.textFaint }]}>
-        Official NHC update {issued}
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Open ${storm.classification} ${storm.name}`}
-        onPress={() => openStorm(storm)}
-        style={[styles.trackLink, { borderColor: theme.cyan }]}
-      >
-        <Text style={[styles.trackLinkText, { color: theme.cyan }]}>
-          View full track
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function HistoricalDemoCard({
-  navigate,
-}: {
-  navigate: (screen: ScreenName) => void;
+  width: number;
+  onOpen: () => void;
 }) {
   const { theme } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Open historical Hurricane Helene storm track"
-      onPress={() => navigate("track")}
+      accessibilityLabel={`Open complete report for ${storm.classification} ${storm.name}`}
+      onPress={onOpen}
       style={[
         styles.stormCard,
-        { backgroundColor: theme.surface, borderColor: theme.redBright },
+        {
+          width,
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+        },
       ]}
     >
-      <View style={styles.cardHeading}>
-        <View>
-          <Text style={[styles.stormName, { color: theme.text }]}>
-            Hurricane Helene
-          </Text>
-          <Text style={styles.category}>HISTORICAL CATEGORY 4</Text>
+      <View style={styles.cardTop}>
+        <View style={styles.cardIdentity}>
+          <View style={[styles.liveDot, { backgroundColor: theme.redBright }]} />
+          <View style={styles.cardCopy}>
+            <Text
+              numberOfLines={1}
+              style={[styles.stormName, { color: theme.text }]}
+            >
+              {storm.classification} {storm.name}
+            </Text>
+            <Text style={[styles.stormBasin, { color: theme.textMuted }]}>
+              {storm.basin.toUpperCase()} · {storm.id.toUpperCase()}
+            </Text>
+          </View>
         </View>
-        <Ionicons
-          name="reorder-three-outline"
-          size={44}
-          color={theme.redBright}
-          style={styles.windIcon}
+        <Ionicons name="chevron-forward" size={23} color={theme.cyan} />
+      </View>
+
+      <View style={styles.metrics}>
+        <Metric
+          label="MAX WIND"
+          value={storm.wind.mph === null ? "—" : `${storm.wind.mph} MPH`}
+          danger
+        />
+        <Metric
+          label="PRESSURE"
+          value={
+            storm.pressureMb === null ? "—" : `${storm.pressureMb} MB`
+          }
+        />
+        <Metric label="MOTION" value={formatMotion(storm)} />
+        <Metric
+          label="CENTER"
+          value={`${storm.center.displayLatitude ?? "—"} · ${
+            storm.center.displayLongitude ?? "—"
+          }`}
         />
       </View>
-      <View style={styles.metrics}>
-        <Metric label="WIND" value="145 MPH" danger />
-        <Metric label="MOTION" value="NNW 14 MPH" />
-        <Metric label="PRESSURE" value="935 MB" />
+
+      <View style={[styles.reportLink, { borderTopColor: theme.border }]}>
+        <Text style={[styles.reportLinkText, { color: theme.cyan }]}>
+          OPEN COMPLETE STORM REPORT
+        </Text>
+        <Text style={[styles.updated, { color: theme.textFaint }]}>
+          Updated {formatUpdated(storm.updatedAt)}
+        </Text>
       </View>
-      <View style={styles.mapClip}>
-        <StormMap height={184} />
-      </View>
-      <Text style={[styles.issued, { color: theme.textFaint }]}>
-        Historical demo · September 2024
-      </Text>
     </Pressable>
   );
 }
@@ -243,8 +225,11 @@ function Metric({
   const { theme } = useTheme();
   return (
     <View style={styles.metric}>
-      <Eyebrow>{label}</Eyebrow>
+      <Text style={[styles.metricLabel, { color: theme.textFaint }]}>
+        {label}
+      </Text>
       <Text
+        numberOfLines={1}
         style={[
           styles.metricValue,
           { color: danger ? theme.redBright : theme.text },
@@ -260,7 +245,6 @@ function formatMotion(storm: LiveStorm) {
   const degrees = storm.movement.directionDegrees;
   const speed = storm.movement.speedMph;
   if (degrees === null && speed === null) return "—";
-
   const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
   const direction =
     degrees === null
@@ -271,109 +255,116 @@ function formatMotion(storm: LiveStorm) {
   }`;
 }
 
+function formatUpdated(value: string | null) {
+  if (!value) return "time unavailable";
+  return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 const styles = StyleSheet.create({
-  liveStorms: { gap: 12 },
-  stormCard: {
-    marginHorizontal: 20,
-    padding: 19,
+  content: { alignSelf: "center", paddingBottom: 24 },
+  headerAction: {
+    minHeight: 38,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderRadius: 24,
-  },
-  cardHeading: {
+    borderRadius: 9,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 7,
   },
-  stormHeadingCopy: { flex: 1, paddingRight: 10 },
-  stormName: { fontSize: 18, fontWeight: "800" },
-  basin: { marginTop: 5, fontSize: 9, fontWeight: "700" },
-  liveBadge: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    fontSize: 8,
-    fontWeight: "800",
-  },
-  category: {
-    alignSelf: "flex-start",
-    marginTop: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 5,
-    backgroundColor: "#F02F3A",
-    color: "#FFFFFF",
-    fontSize: 9,
-    fontWeight: "800",
-  },
-  windIcon: { transform: [{ rotate: "90deg" }] },
-  metrics: {
-    marginVertical: 22,
+  headerActionText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+  listHeading: {
+    marginBottom: 10,
     flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  listTitle: { fontSize: 18, fontWeight: "800" },
+  listMeta: { fontSize: 8, fontWeight: "700", textAlign: "right" },
+  stormGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  stormCard: {
+    minHeight: 178,
+    padding: 15,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
   },
-  metric: { flex: 1 },
+  cardIdentity: {
+    minWidth: 0,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  liveDot: { width: 9, height: 9, borderRadius: 5 },
+  cardCopy: { minWidth: 0, flex: 1 },
+  stormName: { fontSize: 17, fontWeight: "800" },
+  stormBasin: { marginTop: 3, fontSize: 8, fontWeight: "800" },
+  metrics: {
+    marginTop: 18,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  metric: { minWidth: 100, flex: 1 },
+  metricLabel: { fontSize: 7, fontWeight: "800" },
   metricValue: {
-    marginTop: 5,
-    fontSize: 14,
-    fontWeight: "700",
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
-  position: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  liveMap: { marginTop: 14 },
-  mapClip: { borderRadius: 13, overflow: "hidden" },
-  issued: { marginTop: 14, fontSize: 9 },
-  trackLink: {
-    minHeight: 36,
-    marginTop: 12,
+  reportLink: {
+    marginTop: 18,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderRadius: 9,
+    justifyContent: "space-between",
+    gap: 8,
   },
-  trackLinkText: {
-    fontSize: 9,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  emptyCard: {
-    marginHorizontal: 20,
+  reportLinkText: { fontSize: 8, fontWeight: "800" },
+  updated: { fontSize: 7 },
+  empty: {
+    minHeight: 190,
     padding: 24,
     borderWidth: 1,
-    borderRadius: 24,
-    alignItems: "center",
-  },
-  emptyTitle: { marginTop: 12, fontSize: 16, fontWeight: "800", textAlign: "center" },
-  emptyText: { marginTop: 7, fontSize: 11, lineHeight: 16, textAlign: "center" },
-  quickGrid: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    gap: 10,
-  },
-  quickAction: {
-    flex: 1,
-    height: 70,
-    borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
   },
-  quickLabel: {
-    fontSize: 8,
-    fontWeight: "700",
-    textTransform: "uppercase",
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 17,
+    fontWeight: "800",
+    textAlign: "center",
   },
-  statusCard: {
-    padding: 16,
+  emptyText: {
+    maxWidth: 520,
+    marginTop: 7,
+    fontSize: 10,
+    lineHeight: 16,
+    textAlign: "center",
+  },
+  homeNote: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 10,
     flexDirection: "row",
-    gap: 12,
+    alignItems: "center",
+    gap: 9,
   },
-  statusCopy: { flex: 1 },
-  statusTitle: { fontSize: 13, fontWeight: "800" },
-  statusText: { marginTop: 5, fontSize: 11, lineHeight: 17 },
+  homeNoteText: { minWidth: 0, flex: 1, fontSize: 9, lineHeight: 14 },
 });

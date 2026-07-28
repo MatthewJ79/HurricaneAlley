@@ -39,3 +39,16 @@ export function forecastStrengthLabel({
 
   return `${windMph} MPH · ${classification}`;
 }
+
+export function forecastPositionLabel(
+  latitude: number,
+  longitude: number,
+) {
+  const latitudeLabel = `${Math.abs(latitude).toFixed(1)}°${
+    latitude >= 0 ? "N" : "S"
+  }`;
+  const longitudeLabel = `${Math.abs(longitude).toFixed(1)}°${
+    longitude >= 0 ? "E" : "W"
+  }`;
+  return `${latitudeLabel} · ${longitudeLabel}`;
+}

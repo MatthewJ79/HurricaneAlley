@@ -3,10 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import "../leaflet.css";
 import type { LiveStorm } from "../types";
+import { coneCrossSections } from "../utils/coneSections";
 import {
+  forecastPositionLabel,
   forecastStrengthLabel,
   formatForecastTime,
 } from "../utils/forecast";
+import {
+  satelliteImageryForStorm,
+  satelliteTimeLabel,
+} from "../utils/satellite";
 
 const CYCLONE_ICON = require("../../assets/hurricane-icon-red-outlined.png") as {
   uri: string;
@@ -20,9 +26,8 @@ const STREET_ATTRIBUTION =
   process.env.EXPO_PUBLIC_MAP_ATTRIBUTION ??
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const SATELLITE_TILES =
+const SATELLITE_BASE_TILES =
   "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/wmts.cgi?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=BlueMarble_NextGeneration&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible_Level8&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image%2Fjpeg";
-
 function cycloneHtml({
   size,
   label,
@@ -35,41 +40,6 @@ function cycloneHtml({
       display:block;width:${size}px;height:${size}px;object-fit:contain;
       filter:drop-shadow(0 2px 3px rgba(0,0,0,.62));
     " />`;
-}
-
-function forecastMarkerHtml({
-  size,
-  label,
-  validAt,
-  strength,
-  labelBelow,
-}: {
-  size: number;
-  label: string;
-  validAt: string;
-  strength: string;
-  labelBelow: boolean;
-}) {
-  return `
-    <div role="img" aria-label="${label}" style="
-      position:relative;width:80px;height:72px;
-      filter:drop-shadow(0 2px 3px rgba(0,0,0,.62));
-    ">
-      <img src="${CYCLONE_ICON_URI}" aria-hidden="true" style="
-        position:absolute;left:${(80 - size) / 2}px;top:${(72 - size) / 2}px;
-        display:block;width:${size}px;height:${size}px;object-fit:contain;
-      " />
-      <div aria-hidden="true" style="
-        position:absolute;left:2px;right:2px;${labelBelow ? "bottom:0" : "top:0"};
-        padding:3px 3px 2px;border:1px solid rgba(255,255,255,.8);
-        border-radius:5px;background:rgba(5,22,32,.92);
-        color:#fff;text-align:center;white-space:nowrap;line-height:1.15;
-        font-family:Arial,sans-serif;font-size:7px;font-weight:800;
-      ">
-        <div>${validAt}</div>
-        <div style="color:#FF5968;margin-top:1px">${strength}</div>
-      </div>
-    </div>`;
 }
 
 export function ActiveStormMap({
@@ -87,6 +57,7 @@ export function ActiveStormMap({
       ? "Satellite"
       : "Map",
   );
+  const satellite = satelliteImageryForStorm(storm);
 
   useEffect(() => {
     if (
@@ -118,21 +89,21 @@ export function ActiveStormMap({
       const map = L.map(containerRef.current, {
         attributionControl: true,
         zoomControl: interactive,
-        dragging: interactive,
-        scrollWheelZoom: interactive,
-        doubleClickZoom: interactive,
-        boxZoom: interactive,
-        keyboard: interactive,
-        touchZoom: interactive,
-        tapHold: interactive,
+        dragging: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: true,
+        touchZoom: true,
+        tapHold: true,
         preferCanvas: false,
       });
       mapInstance = map;
 
       if (track.length > 1) {
         map.fitBounds(L.latLngBounds(track), {
-          paddingTopLeft: [48, 52],
-          paddingBottomRight: [48, 52],
+          paddingTopLeft: [44, 46],
+          paddingBottomRight: [44, 46],
           maxZoom: interactive ? 6 : 5,
           animate: false,
         });
@@ -141,10 +112,12 @@ export function ActiveStormMap({
       }
 
       const tiles = L.tileLayer(
-        layer === "Map" ? STREET_TILES : SATELLITE_TILES,
+        layer === "Map" ? STREET_TILES : SATELLITE_BASE_TILES,
         {
           attribution:
-            layer === "Map" ? STREET_ATTRIBUTION : "NASA EOSDIS GIBS",
+            layer === "Map"
+              ? STREET_ATTRIBUTION
+              : "NASA EOSDIS GIBS",
           maxZoom: layer === "Map" ? 19 : 9,
           minZoom: 1,
           tileSize: 256,
@@ -152,6 +125,17 @@ export function ActiveStormMap({
         },
       );
       tiles.addTo(map);
+      if (layer === "Satellite") {
+        L.tileLayer(satellite.tileUrl, {
+          attribution: `NASA ${satellite.satellite} GeoColor · ${
+            satellite.observationTime ?? "latest"
+          }`,
+          maxZoom: 7,
+          minZoom: 1,
+          tileSize: 256,
+          crossOrigin: true,
+        }).addTo(map);
+      }
 
       if (storm.officialCone) {
         L.geoJSON(storm.officialCone.feature as GeoJsonObject, {
@@ -164,6 +148,21 @@ export function ActiveStormMap({
           },
         }).addTo(map);
       }
+
+      coneCrossSections(storm).forEach((section) => {
+        L.polyline(
+          section.map(
+            ([longitude, latitude]) =>
+              [latitude, longitude] as [number, number],
+          ),
+          {
+            interactive: false,
+            color: "#536A73",
+            weight: 2,
+            opacity: 0.92,
+          },
+        ).addTo(map);
+      });
 
       if (track.length > 1) {
         L.polyline(track, {
@@ -178,18 +177,19 @@ export function ActiveStormMap({
       forecast.forEach((point, index) => {
         const validAt = formatForecastTime(point.validAt);
         const strength = forecastStrengthLabel(point);
+        const position = forecastPositionLabel(
+          point.latitude,
+          point.longitude,
+        );
         L.marker([point.latitude, point.longitude], {
           icon: L.divIcon({
             className: "",
-            html: forecastMarkerHtml({
+            html: cycloneHtml({
               size: 24,
-              validAt,
-              strength,
-              labelBelow: index % 2 === 1,
-              label: `${storm.name} official NHC forecast for ${validAt}: ${strength}`,
+              label: `${storm.name} official NHC forecast for ${validAt}: ${strength}, ${position}`,
             }),
-            iconSize: [80, 72],
-            iconAnchor: [40, 36],
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
           }),
           interactive: false,
           keyboard: false,
@@ -261,9 +261,13 @@ export function ActiveStormMap({
       </View>
       <View pointerEvents="none" style={styles.sourceBadge}>
         <Text style={styles.sourceText}>
-          {storm.officialCone
-            ? "OFFICIAL NHC CONE + TRACK"
-            : "OFFICIAL NHC TRACK"}
+          {layer === "Satellite"
+            ? `NHC TRACK · ${satellite.satellite} ${satelliteTimeLabel(
+                satellite.observationTime,
+              )} UTC`
+            : storm.officialCone
+              ? "OFFICIAL NHC CONE + TRACK"
+              : "OFFICIAL NHC TRACK"}
         </Text>
       </View>
     </View>
