@@ -13,6 +13,7 @@ import { Screen, ScreenHeader } from "../components/Chrome";
 import { ModelGuidanceMap } from "../components/ModelGuidanceMap";
 import { StormSelector } from "../components/StormSelector";
 import { useTheme } from "../theme/ThemeProvider";
+import type { Theme } from "../theme/tokens";
 import type { LiveStorm } from "../types";
 import {
   forecastPositionLabel,
@@ -55,7 +56,7 @@ export function StormReportScreen({
   const desktop = width >= 900;
   const contentWidth = desktop ? Math.min(width * 0.8, 1200) : width - 40;
   const mapHeight = desktop
-    ? Math.max(520, Math.min(680, height - 280))
+    ? Math.max(430, Math.min(520, height - 245))
     : 420;
   const [view, setView] = useState<ReportView>(initialReportView);
   const [modelView, setModelView] = useState<ModelView>("All tracks");
@@ -108,11 +109,12 @@ export function StormReportScreen({
 
   const visibleAids =
     modelView === "Individual" && selectedAid ? [selectedAid] : undefined;
+  const desktopWorkspaceWidth = contentWidth - 430;
   const guidanceWidth = desktop
-    ? (contentWidth - 7) / 2
+    ? (desktopWorkspaceWidth - 7) / 2
     : contentWidth;
   const productWidth = desktop
-    ? (contentWidth - 7) / 2
+    ? (desktopWorkspaceWidth - 7) / 2
     : contentWidth;
 
   return (
@@ -121,6 +123,7 @@ export function StormReportScreen({
         title={`${storm.classification} ${storm.name}`}
         subtitle={`${storm.basin} · Complete official storm report`}
         onBack={onBack}
+        compact={desktop}
         contentWidth={desktop ? contentWidth : undefined}
         rightContent={
           desktop ? (
@@ -135,6 +138,52 @@ export function StormReportScreen({
       />
 
       <View style={[styles.report, { width: contentWidth }]}>
+        {desktop ? (
+          <View style={styles.desktopDashboard}>
+            <ReportNavigation
+              view={view}
+              vertical
+              onChange={setView}
+            />
+            <View style={styles.desktopWorkspace}>
+              {view !== "Alerts" ? (
+                <ReportMap
+                  storm={storm}
+                  view={view}
+                  height={mapHeight}
+                  visibleAids={visibleAids}
+                />
+              ) : null}
+              {view === "Models" ? (
+                <ModelsPanel
+                  storm={storm}
+                  models={mappableModels}
+                  modelView={modelView}
+                  selectedAid={selectedAid}
+                  guidanceWidth={guidanceWidth}
+                  compact
+                  onSetModelView={setModelView}
+                  onSelectAid={(aid) => {
+                    setSelectedAid(aid);
+                    setModelView("Individual");
+                  }}
+                />
+              ) : null}
+              {view === "Alerts" ? (
+                <AlertsPanel
+                  storm={storm}
+                  productWidth={productWidth}
+                  onPrepare={onPrepare}
+                />
+              ) : null}
+              {view === "Forecast" ? (
+                <ForecastSource storm={storm} />
+              ) : null}
+            </View>
+            <DesktopInformationRail storm={storm} />
+          </View>
+        ) : (
+          <>
         {!desktop ? (
           <StormSelector
             storms={storms}
@@ -252,8 +301,307 @@ export function StormReportScreen({
             onPrepare={onPrepare}
           />
         ) : null}
+          </>
+        )}
       </View>
     </Screen>
+  );
+}
+
+function ReportNavigation({
+  view,
+  vertical = false,
+  onChange,
+}: {
+  view: ReportView;
+  vertical?: boolean;
+  onChange: (view: ReportView) => void;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={[
+        styles.reportTabs,
+        vertical && styles.reportTabsVertical,
+        { borderColor: theme.border, backgroundColor: theme.surface },
+      ]}
+    >
+      {vertical ? (
+        <View style={styles.railHeading}>
+          <Text style={[styles.railEyebrow, { color: theme.textFaint }]}>
+            STORM REPORT
+          </Text>
+          <Text style={[styles.railTitle, { color: theme.text }]}>Views</Text>
+        </View>
+      ) : null}
+      {reportViews.map((item) => {
+        const active = item.id === view;
+        return (
+          <Pressable
+            key={item.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(item.id)}
+            style={[
+              styles.reportTab,
+              vertical && styles.reportTabVertical,
+              active && { backgroundColor: theme.cyan },
+            ]}
+          >
+            <Ionicons
+              name={item.icon}
+              size={vertical ? 19 : 16}
+              color={active ? "#003638" : theme.textMuted}
+            />
+            <Text
+              numberOfLines={vertical ? 2 : 1}
+              style={[
+                styles.reportTabText,
+                vertical && styles.reportTabTextVertical,
+                { color: active ? "#003638" : theme.textMuted },
+              ]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function ReportMap({
+  storm,
+  view,
+  height,
+  visibleAids,
+}: {
+  storm: LiveStorm;
+  view: ReportView;
+  height: number;
+  visibleAids?: string[];
+}) {
+  const { theme } = useTheme();
+  const displayedHeight = view === "Models" ? Math.min(height, 280) : height;
+  return (
+    <View style={styles.mapSurface}>
+      <View style={styles.mapHeading}>
+        <View style={styles.mapHeadingCopy}>
+          <Text style={[styles.mapTitle, { color: theme.text }]}>
+            {view === "Models"
+              ? "Official model guidance"
+              : "Official NHC track"}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={[styles.mapMeta, { color: theme.textMuted }]}
+          >
+            {view === "Models"
+              ? `${formatCycle(storm.modelGuidance?.cycleAt)} · ${
+                  storm.modelGuidance?.aids.length ?? 0
+                } public ATCF aids`
+              : `Advisory ${
+                  storm.officialCone?.advisoryNumber ??
+                  storm.products.forecastAdvisory?.advisoryNumber ??
+                  "current"
+                } · Cone, center, and forecast positions`}
+          </Text>
+        </View>
+        <View style={[styles.liveBadge, { borderColor: theme.cyan }]}>
+          <Text style={[styles.liveBadgeText, { color: theme.cyan }]}>
+            LIVE NHC
+          </Text>
+        </View>
+      </View>
+      {view === "Models" ? (
+        <ModelGuidanceMap
+          storm={storm}
+          height={displayedHeight}
+          visibleAids={visibleAids}
+        />
+      ) : (
+        <ActiveStormMap storm={storm} height={displayedHeight} interactive />
+      )}
+    </View>
+  );
+}
+
+function DesktopInformationRail({ storm }: { storm: LiveStorm }) {
+  const { theme } = useTheme();
+  const forecast = storm.forecastPoints ?? [];
+  return (
+    <View style={styles.informationRail}>
+      <View
+        style={[
+          styles.conditionsCard,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
+        <View style={styles.conditionsHeading}>
+          <View>
+            <Text style={[styles.conditionsEyebrow, { color: theme.cyan }]}>
+              {storm.classificationCode} · {storm.basin.toUpperCase()}
+            </Text>
+            <Text style={[styles.conditionsLabel, { color: theme.textMuted }]}>
+              CURRENT CONDITIONS
+            </Text>
+          </View>
+          <View style={[styles.liveDot, { backgroundColor: theme.redBright }]} />
+        </View>
+        <View style={styles.primaryWind}>
+          <Text style={[styles.primaryWindValue, { color: theme.redBright }]}>
+            {storm.wind.mph === null ? "—" : storm.wind.mph}
+          </Text>
+          <View>
+            <Text style={[styles.primaryWindUnit, { color: theme.text }]}>
+              MPH
+            </Text>
+            <Text style={[styles.primaryWindMeta, { color: theme.textFaint }]}>
+              MAX WIND
+            </Text>
+          </View>
+        </View>
+        <View style={styles.conditionsMetrics}>
+          <RailMetric
+            label="PRESSURE"
+            value={
+              storm.pressureMb === null ? "—" : `${storm.pressureMb} MB`
+            }
+          />
+          <RailMetric label="MOTION" value={formatMotion(storm)} />
+          <RailMetric
+            label="CENTER"
+            value={`${storm.center.displayLatitude ?? "—"} · ${
+              storm.center.displayLongitude ?? "—"
+            }`}
+            wide
+          />
+        </View>
+        <Text style={[styles.conditionsUpdated, { color: theme.textFaint }]}>
+          OFFICIAL UPDATE · {formatUpdated(storm.updatedAt)}
+        </Text>
+      </View>
+
+      <View
+        style={[
+          styles.forecastRail,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
+        <View style={styles.forecastRailHeading}>
+          <View>
+            <Text style={[styles.forecastRailTitle, { color: theme.text }]}>
+              Official forecast
+            </Text>
+            <Text style={[styles.forecastRailMeta, { color: theme.textMuted }]}>
+              NHC CENTER POSITIONS
+            </Text>
+          </View>
+          <Text style={[styles.advisoryBadge, { color: theme.cyan }]}>
+            ADV{" "}
+            {storm.officialCone?.advisoryNumber ??
+              storm.products.forecastAdvisory?.advisoryNumber ??
+              "—"}
+          </Text>
+        </View>
+        <View style={styles.forecastRailList}>
+          {forecast.map((point, index) => (
+            <View
+              key={`${point.validAt ?? "forecast"}-${index}`}
+              style={[
+                styles.forecastRailRow,
+                index < forecast.length - 1 && {
+                  borderBottomColor: theme.border,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                },
+              ]}
+            >
+              <View style={styles.forecastRailTime}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.forecastRailTimeText, { color: theme.text }]}
+                >
+                  {formatForecastTime(point.validAt)}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.forecastRailPosition,
+                    { color: theme.textFaint },
+                  ]}
+                >
+                  {forecastPositionLabel(point.latitude, point.longitude)}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.forecastStrengthBadge,
+                  { backgroundColor: `${forecastTone(point.windKnots, theme)}20` },
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.forecastStrengthBadgeText,
+                    { color: forecastTone(point.windKnots, theme) },
+                  ]}
+                >
+                  {forecastStrengthLabel(point)}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function RailMetric({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  wide?: boolean;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={[styles.railMetric, wide && styles.railMetricWide]}>
+      <Text style={[styles.railMetricLabel, { color: theme.textFaint }]}>
+        {label}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={[styles.railMetricValue, { color: theme.text }]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function ForecastSource({ storm }: { storm: LiveStorm }) {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.forecastSource}>
+      <Text style={[styles.forecastSourceText, { color: theme.textMuted }]}>
+        The cone represents probable center-track uncertainty. Hazardous
+        conditions can occur outside it.
+      </Text>
+      {storm.officialCone?.sourceUrl ? (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => void Linking.openURL(storm.officialCone!.sourceUrl)}
+        >
+          <Text style={[styles.forecastSourceLink, { color: theme.cyan }]}>
+            OFFICIAL NHC CONE SOURCE
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -441,6 +789,7 @@ function ModelsPanel({
   modelView,
   selectedAid,
   guidanceWidth,
+  compact = false,
   onSetModelView,
   onSelectAid,
 }: {
@@ -449,13 +798,19 @@ function ModelsPanel({
   modelView: ModelView;
   selectedAid: string | null;
   guidanceWidth: number;
+  compact?: boolean;
   onSetModelView: (view: ModelView) => void;
   onSelectAid: (aid: string) => void;
 }) {
   const { theme } = useTheme();
   return (
     <>
-      <View style={styles.modelControls}>
+      <View
+        style={[
+          styles.modelControls,
+          compact && styles.modelControlsCompact,
+        ]}
+      >
         <View style={styles.modelViewRow}>
           {(["All tracks", "Agreement", "Individual"] as const).map(
             (option) => {
@@ -862,6 +1217,12 @@ function productUrl(
   return product?.url ?? product?.kmzUrl ?? product?.zipUrl ?? null;
 }
 
+function forecastTone(windKnots: number, theme: Theme) {
+  if (windKnots >= 64) return theme.redBright;
+  if (windKnots >= 34) return theme.amber;
+  return theme.cyan;
+}
+
 function formatMotion(storm: LiveStorm) {
   const degrees = storm.movement.directionDegrees;
   const speed = storm.movement.speedMph;
@@ -930,6 +1291,20 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingBottom: 24,
   },
+  desktopDashboard: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  desktopWorkspace: {
+    minWidth: 0,
+    flex: 1,
+  },
+  informationRail: {
+    width: 280,
+    gap: 8,
+  },
   summaryStrip: {
     marginBottom: 10,
     paddingHorizontal: 12,
@@ -973,6 +1348,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reportTabsMobile: { flexWrap: "wrap" },
+  reportTabsVertical: {
+    width: 130,
+    marginBottom: 0,
+    padding: 6,
+    flexDirection: "column",
+    gap: 5,
+  },
+  railHeading: {
+    paddingHorizontal: 7,
+    paddingTop: 7,
+    paddingBottom: 9,
+  },
+  railEyebrow: { fontSize: 7, fontWeight: "800" },
+  railTitle: { marginTop: 2, fontSize: 15, fontWeight: "800" },
   reportTab: {
     minWidth: 0,
     minHeight: 38,
@@ -990,6 +1379,20 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   reportTabText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+  reportTabVertical: {
+    minHeight: 62,
+    flex: 0,
+    paddingHorizontal: 8,
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 5,
+  },
+  reportTabTextVertical: {
+    fontSize: 8,
+    lineHeight: 11,
+    textAlign: "left",
+  },
   mapSurface: { width: "100%" },
   mapHeading: {
     marginBottom: 8,
@@ -998,6 +1401,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
+  mapHeadingCopy: { minWidth: 0, flex: 1 },
   mapTitle: { fontSize: 18, fontWeight: "800" },
   mapMeta: { marginTop: 2, fontSize: 8, fontWeight: "600" },
   liveBadge: {
@@ -1007,6 +1411,108 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   liveBadgeText: { fontSize: 7, fontWeight: "800" },
+  conditionsCard: {
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  conditionsHeading: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  conditionsEyebrow: { fontSize: 7, fontWeight: "800" },
+  conditionsLabel: { marginTop: 2, fontSize: 7, fontWeight: "700" },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  primaryWind: {
+    marginTop: 9,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 7,
+  },
+  primaryWindValue: {
+    fontSize: 34,
+    lineHeight: 36,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
+  primaryWindUnit: { fontSize: 12, fontWeight: "800" },
+  primaryWindMeta: { marginTop: 1, fontSize: 6.5, fontWeight: "800" },
+  conditionsMetrics: {
+    marginTop: 9,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+  },
+  railMetric: { minWidth: 105, flex: 1 },
+  railMetricWide: { minWidth: "100%" },
+  railMetricLabel: { fontSize: 6.5, fontWeight: "800" },
+  railMetricValue: {
+    marginTop: 2,
+    fontSize: 9,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
+  conditionsUpdated: {
+    marginTop: 9,
+    paddingTop: 7,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#303A46",
+    fontSize: 6.5,
+    fontWeight: "700",
+  },
+  forecastRail: {
+    padding: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  forecastRailHeading: {
+    marginBottom: 4,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  forecastRailTitle: { fontSize: 13, fontWeight: "800" },
+  forecastRailMeta: { marginTop: 2, fontSize: 6.5, fontWeight: "700" },
+  advisoryBadge: { fontSize: 7, fontWeight: "800" },
+  forecastRailList: { width: "100%" },
+  forecastRailRow: {
+    minHeight: 43,
+    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  forecastRailTime: { minWidth: 0, flex: 1 },
+  forecastRailTimeText: { fontSize: 8, fontWeight: "800" },
+  forecastRailPosition: {
+    marginTop: 2,
+    fontSize: 6.5,
+    fontWeight: "700",
+  },
+  forecastStrengthBadge: {
+    maxWidth: 104,
+    minWidth: 90,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  forecastStrengthBadgeText: {
+    fontSize: 7,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  forecastSource: {
+    marginTop: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  forecastSourceText: { minWidth: 0, flex: 1, fontSize: 7.5, lineHeight: 11 },
+  forecastSourceLink: { fontSize: 7, fontWeight: "800" },
   sectionHeading: {
     marginTop: 18,
     marginBottom: 8,
@@ -1064,6 +1570,7 @@ const styles = StyleSheet.create({
   forecastPosition: { marginTop: 3, fontSize: 8, fontWeight: "700" },
   sourceLink: { marginTop: 12, fontSize: 10, fontWeight: "800" },
   modelControls: { marginTop: 9, gap: 6 },
+  modelControlsCompact: { marginTop: 6 },
   modelViewRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   smallTag: {
     minHeight: 27,

@@ -59,18 +59,21 @@ export function ScreenHeader({
   onBack,
   rightContent,
   contentWidth,
+  compact = false,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
   rightContent?: ReactNode;
   contentWidth?: number;
+  compact?: boolean;
 }) {
   const { theme, mode, toggleMode } = useTheme();
   return (
     <View
       style={[
         styles.header,
+        compact && styles.headerCompact,
         contentWidth === undefined
           ? null
           : { width: contentWidth, alignSelf: "center" },
@@ -192,6 +195,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerCompact: {
+    minHeight: 72,
+    paddingVertical: 10,
   },
   headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
