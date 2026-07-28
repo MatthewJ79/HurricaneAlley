@@ -109,7 +109,7 @@ export function StormReportScreen({
 
   const visibleAids =
     modelView === "Individual" && selectedAid ? [selectedAid] : undefined;
-  const desktopWorkspaceWidth = contentWidth - 430;
+  const desktopWorkspaceWidth = contentWidth - 450;
   const guidanceWidth = desktop
     ? (desktopWorkspaceWidth - 7) / 2
     : contentWidth;
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   informationRail: {
-    width: 280,
+    width: 300,
     gap: 8,
   },
   summaryStrip: {
@@ -1360,8 +1360,8 @@ const styles = StyleSheet.create({
     paddingTop: 7,
     paddingBottom: 9,
   },
-  railEyebrow: { fontSize: 7, fontWeight: "800" },
-  railTitle: { marginTop: 2, fontSize: 15, fontWeight: "800" },
+  railEyebrow: { fontSize: 8, fontWeight: "800" },
+  railTitle: { marginTop: 2, fontSize: 17, fontWeight: "800" },
   reportTab: {
     minWidth: 0,
     minHeight: 38,
@@ -1389,8 +1389,8 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   reportTabTextVertical: {
-    fontSize: 8,
-    lineHeight: 11,
+    fontSize: 9.5,
+    lineHeight: 13,
     textAlign: "left",
   },
   mapSurface: { width: "100%" },
@@ -1412,7 +1412,7 @@ const styles = StyleSheet.create({
   },
   liveBadgeText: { fontSize: 7, fontWeight: "800" },
   conditionsCard: {
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderRadius: 12,
   },
@@ -1422,8 +1422,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
-  conditionsEyebrow: { fontSize: 7, fontWeight: "800" },
-  conditionsLabel: { marginTop: 2, fontSize: 7, fontWeight: "700" },
+  conditionsEyebrow: { fontSize: 9, fontWeight: "800" },
+  conditionsLabel: { marginTop: 3, fontSize: 8.5, fontWeight: "700" },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
   primaryWind: {
     marginTop: 9,
@@ -1432,13 +1432,13 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   primaryWindValue: {
-    fontSize: 34,
-    lineHeight: 36,
+    fontSize: 38,
+    lineHeight: 40,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
-  primaryWindUnit: { fontSize: 12, fontWeight: "800" },
-  primaryWindMeta: { marginTop: 1, fontSize: 6.5, fontWeight: "800" },
+  primaryWindUnit: { fontSize: 14, fontWeight: "800" },
+  primaryWindMeta: { marginTop: 1, fontSize: 9, fontWeight: "800" },
   conditionsMetrics: {
     marginTop: 9,
     flexDirection: "row",
@@ -1447,23 +1447,23 @@ const styles = StyleSheet.create({
   },
   railMetric: { minWidth: 105, flex: 1 },
   railMetricWide: { minWidth: "100%" },
-  railMetricLabel: { fontSize: 6.5, fontWeight: "800" },
+  railMetricLabel: { fontSize: 8, fontWeight: "800" },
   railMetricValue: {
-    marginTop: 2,
-    fontSize: 9,
+    marginTop: 3,
+    fontSize: 11,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   conditionsUpdated: {
-    marginTop: 9,
-    paddingTop: 7,
+    marginTop: 11,
+    paddingTop: 9,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#303A46",
-    fontSize: 6.5,
+    fontSize: 8,
     fontWeight: "700",
   },
   forecastRail: {
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
     borderRadius: 12,
   },
@@ -1474,33 +1474,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
-  forecastRailTitle: { fontSize: 13, fontWeight: "800" },
-  forecastRailMeta: { marginTop: 2, fontSize: 6.5, fontWeight: "700" },
-  advisoryBadge: { fontSize: 7, fontWeight: "800" },
+  forecastRailTitle: { fontSize: 16, fontWeight: "800" },
+  forecastRailMeta: { marginTop: 3, fontSize: 8, fontWeight: "700" },
+  advisoryBadge: { fontSize: 9, fontWeight: "800" },
   forecastRailList: { width: "100%" },
   forecastRailRow: {
-    minHeight: 43,
-    paddingVertical: 6,
+    minHeight: 51,
+    paddingVertical: 7,
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
   },
   forecastRailTime: { minWidth: 0, flex: 1 },
-  forecastRailTimeText: { fontSize: 8, fontWeight: "800" },
+  forecastRailTimeText: { fontSize: 10, fontWeight: "800" },
   forecastRailPosition: {
-    marginTop: 2,
-    fontSize: 6.5,
+    marginTop: 3,
+    fontSize: 8,
     fontWeight: "700",
   },
   forecastStrengthBadge: {
-    maxWidth: 104,
-    minWidth: 90,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
+    maxWidth: 120,
+    minWidth: 108,
+    paddingHorizontal: 7,
+    paddingVertical: 6,
     borderRadius: 6,
   },
   forecastStrengthBadgeText: {
-    fontSize: 7,
+    fontSize: 8.5,
     fontWeight: "800",
     textAlign: "center",
   },
