@@ -74,6 +74,7 @@ export function ScreenHeader({
       style={[
         styles.header,
         compact && styles.headerCompact,
+        { backgroundColor: theme.background },
         contentWidth === undefined
           ? null
           : { width: contentWidth, alignSelf: "center" },
@@ -112,7 +113,8 @@ export function ScreenHeader({
 export function Screen({
   children,
   footerSpace = true,
-}: PropsWithChildren<{ footerSpace?: boolean }>) {
+  stickyHeader = false,
+}: PropsWithChildren<{ footerSpace?: boolean; stickyHeader?: boolean }>) {
   const { theme, mode } = useTheme();
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -120,6 +122,7 @@ export function Screen({
       <ScrollView
         style={{ backgroundColor: theme.background }}
         contentContainerStyle={[styles.scrollContent, footerSpace && styles.footerSpace]}
+        stickyHeaderIndices={stickyHeader ? [0] : undefined}
         showsVerticalScrollIndicator={false}
       >
         {children}
@@ -195,6 +198,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    zIndex: 20,
   },
   headerCompact: {
     minHeight: 72,

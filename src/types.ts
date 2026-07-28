@@ -3,9 +3,7 @@ export type ThemeMode = "light" | "dark";
 export type ScreenName =
   | "home"
   | "storm"
-  | "prepare"
-  | "advisory"
-  | "kit";
+  | "prepare";
 
 export type TabName = Extract<
   ScreenName,

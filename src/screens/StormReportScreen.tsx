@@ -78,7 +78,7 @@ export function StormReportScreen({
 
   if (!storm) {
     return (
-      <Screen>
+      <Screen stickyHeader>
         <ScreenHeader
           title="Storm Report"
           subtitle="No active tropical cyclone"
@@ -118,7 +118,7 @@ export function StormReportScreen({
     : contentWidth;
 
   return (
-    <Screen>
+    <Screen stickyHeader>
       <ScreenHeader
         title={`${storm.classification} ${storm.name}`}
         subtitle={`${storm.basin} · Complete official storm report`}
