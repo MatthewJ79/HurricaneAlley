@@ -537,7 +537,10 @@ function DesktopInformationRail({ storm }: { storm: LiveStorm }) {
               <View
                 style={[
                   styles.forecastStrengthBadge,
-                  { backgroundColor: `${forecastTone(point.windKnots, theme)}20` },
+                  {
+                    backgroundColor: "transparent",
+                    borderColor: forecastTone(point.windKnots, theme),
+                  },
                 ]}
               >
                 <Text
@@ -1219,7 +1222,7 @@ function productUrl(
 
 function forecastTone(windKnots: number, theme: Theme) {
   if (windKnots >= 64) return theme.redBright;
-  if (windKnots >= 34) return theme.amber;
+  if (windKnots >= 34) return theme.warning;
   return theme.cyan;
 }
 
@@ -1497,6 +1500,7 @@ const styles = StyleSheet.create({
     minWidth: 108,
     paddingHorizontal: 7,
     paddingVertical: 6,
+    borderWidth: 1,
     borderRadius: 6,
   },
   forecastStrengthBadgeText: {
