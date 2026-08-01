@@ -6,6 +6,7 @@ import {
   parseAtcfAidDeck,
   parseConeKml,
   parseForecastAdvisory,
+  parseWindRadiiKml,
 } from "./nhc.mjs";
 
 const rawStorm = {
@@ -104,6 +105,32 @@ test("parses the official NHC KML cone polygon without deriving geometry", () =>
     [-81, 24],
   ]);
   assert.equal(feature.properties.source, "NOAA National Hurricane Center");
+});
+
+test("groups official NHC wind radii by forecast position and threshold", () => {
+  const frames = parseWindRadiiKml(`<?xml version="1.0"?>
+    <kml><Document><Folder>
+      <Placemark><name>34</name><Polygon><outerBoundaryIs><LinearRing>
+        <coordinates>-82,24 -80,24 -80,26 -82,24</coordinates>
+      </LinearRing></outerBoundaryIs></Polygon></Placemark>
+      <Placemark><name>50</name><Polygon><outerBoundaryIs><LinearRing>
+        <coordinates>-81.5,24.5 -80.5,24.5 -80.5,25.5 -81.5,24.5</coordinates>
+      </LinearRing></outerBoundaryIs></Polygon></Placemark>
+      <Placemark><name>64</name><Polygon><outerBoundaryIs><LinearRing>
+        <coordinates>-81.2,24.8 -80.8,24.8 -80.8,25.2 -81.2,24.8</coordinates>
+      </LinearRing></outerBoundaryIs></Polygon></Placemark>
+      <Placemark><name>34</name><Polygon><outerBoundaryIs><LinearRing>
+        <coordinates>-84,26 -82,26 -82,28 -84,26</coordinates>
+      </LinearRing></outerBoundaryIs></Polygon></Placemark>
+    </Folder></Document></kml>`);
+
+  assert.equal(frames.length, 2);
+  assert.deepEqual(
+    frames[0].map((zone) => zone.thresholdKnots),
+    [34, 50, 64],
+  );
+  assert.equal(frames[1][0].thresholdMph, 39);
+  assert.equal(frames[1][0].feature.geometry.type, "Polygon");
 });
 
 test("parses the latest official ATCF public guidance cycle", () => {

@@ -17,6 +17,7 @@ type IconName = ComponentProps<typeof Ionicons>["name"];
 
 const tabs: { id: TabName; label: string; icon: IconName; active: IconName }[] = [
   { id: "home", label: "Home", icon: "home-outline", active: "home" },
+  { id: "my-area", label: "My Area", icon: "location-outline", active: "location" },
   { id: "prepare", label: "Prepare", icon: "shield-checkmark-outline", active: "shield-checkmark" },
 ];
 

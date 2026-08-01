@@ -3,10 +3,15 @@ import { StyleSheet, View } from "react-native";
 import { BottomTabs, DataStatusBanner } from "./src/components/Chrome";
 import { useStormFeed } from "./src/hooks/useStormFeed";
 import { HomeScreen } from "./src/screens/HomeScreen";
+import { MyAreaScreen } from "./src/screens/MyAreaScreen";
 import { PrepareScreen } from "./src/screens/PrepareScreen";
 import { StormReportScreen } from "./src/screens/StormReportScreen";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import type { LiveStorm, ScreenName } from "./src/types";
+import {
+  configureForegroundNotifications,
+  listenForNotificationNavigation,
+} from "./src/utils/pushNotifications";
 
 function HurricaneAlleyApp() {
   const { theme } = useTheme();
@@ -28,6 +33,11 @@ function HurricaneAlleyApp() {
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    configureForegroundNotifications();
+    return listenForNotificationNavigation(() => navigate("my-area"));
   }, []);
 
   const navigate = (next: ScreenName, stormId?: string | null) => {
@@ -83,6 +93,7 @@ function HurricaneAlleyApp() {
             onPrepare={() => navigate("prepare")}
           />
         ) : null}
+        {screen === "my-area" ? <MyAreaScreen /> : null}
         {screen === "prepare" ? (
           <PrepareScreen onBack={() => navigate("home")} />
         ) : null}
@@ -99,7 +110,7 @@ function screenFromLocation(): ScreenName {
     return "storm";
   }
   if (candidate === "kit" || candidate === "advisory") return "prepare";
-  const screens: ScreenName[] = ["home", "storm", "prepare"];
+  const screens: ScreenName[] = ["home", "my-area", "storm", "prepare"];
   return screens.includes(candidate as ScreenName)
     ? (candidate as ScreenName)
     : "home";

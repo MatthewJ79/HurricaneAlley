@@ -20,6 +20,7 @@
     },
     "plugins": [
       "expo-font",
+      "expo-notifications",
       "@maplibre/maplibre-react-native"
     ]
   }

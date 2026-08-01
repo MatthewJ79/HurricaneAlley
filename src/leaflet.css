@@ -190,3 +190,46 @@
   height: 0.667em;
   vertical-align: baseline !important;
 }
+
+.forecast-callout-card {
+  box-sizing: border-box;
+  position: relative;
+  width: 96px;
+  min-height: 42px;
+  border: 1px solid rgb(255 255 255 / 38%);
+  border-left: 3px solid var(--forecast-accent);
+  border-radius: 7px;
+  padding: 5px 6px;
+  background: rgb(5 22 32 / 94%);
+  box-shadow: 0 2px 7px rgb(0 0 0 / 38%);
+  color: #fff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.forecast-callout-card span,
+.forecast-callout-card strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forecast-callout-card span {
+  color: #bcd0d8;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.forecast-callout-card strong {
+  margin-top: 2px;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.forecast-callout-card--selected {
+  border-color: #fff;
+  border-left-color: var(--forecast-accent);
+  box-shadow: 0 0 0 2px rgb(0 175 193 / 50%), 0 3px 9px rgb(0 0 0 / 45%);
+}

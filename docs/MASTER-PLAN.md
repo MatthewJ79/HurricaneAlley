@@ -72,6 +72,12 @@ API, database, and distribution cache.
 This design ensures that an advisory is downloaded and converted once whether
 the product has ten users or ten million users.
 
+The detailed schema, transactional snapshot, API read path, and staged cutover
+are defined in [`DATABASE-PLAN.md`](DATABASE-PLAN.md). The central read-model
+decision is that a customer report request reads a preassembled, versioned
+`storm_report_snapshots` row. It never fans out to upstream provider APIs or
+rebuilds the complete report during the request.
+
 ## 4. Advisory-aware and adaptive ingestion
 
 The ingestion service will schedule work around official product schedules
@@ -279,10 +285,17 @@ presented as an unmodified official government product.
 
 ### Phase 3: Operational database
 
-- Design the PostgreSQL/PostGIS schema from the proven normalized models.
-- Migrate the development snapshot into database-backed current state.
-- Store separate advisory, update, warning, forecast, and hazard streams.
-- Add lifecycle and retention jobs.
+- Add a storage repository boundary so ingestion and API code are not coupled
+  to either JSON files or PostgreSQL.
+- Implement the PostgreSQL/PostGIS schema and versioned migrations described in
+  `DATABASE-PLAN.md`.
+- Store immutable advisory, update, warning, forecast, model, provenance, and
+  hazard streams with idempotency constraints.
+- Build a preassembled `storm_report_snapshots` read model in the same
+  transaction that advances current storm state.
+- Dual-write and shadow-read before switching customer responses from the file
+  cache to database snapshots.
+- Add lifecycle, retention, backup, recovery, and transactional-outbox jobs.
 
 ### Phase 4: Scalable distribution
 
@@ -319,3 +332,11 @@ The following decisions are approved for planning:
    bulky source artifacts.
 8. Source provenance, freshness, and the distinction between official and
    derived information are mandatory at every layer.
+9. Customer report requests will read preassembled, versioned database
+   snapshots and will never trigger upstream provider calls.
+10. Normalized immutable products remain the auditable source for rebuilding a
+    current report; JSONB report snapshots are optimized read models, not the
+    only stored copy of official data.
+11. Database cutover will use dual writes, shadow comparisons, and a feature
+    flag so the current file snapshot remains an available rollback source
+    until database behavior is verified.

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_DB: hurricane_alley
+      POSTGRES_USER: hurricane_alley
+      POSTGRES_PASSWORD: ${HURRICANE_ALLEY_DB_PASSWORD:?Set HURRICANE_ALLEY_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - hurricane_alley_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hurricane_alley -d hurricane_alley"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  hurricane_alley_postgres:
+

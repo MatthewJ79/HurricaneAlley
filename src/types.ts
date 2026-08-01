@@ -2,13 +2,84 @@ export type ThemeMode = "light" | "dark";
 
 export type ScreenName =
   | "home"
+  | "my-area"
   | "storm"
   | "prepare";
 
 export type TabName = Extract<
   ScreenName,
-  "home" | "prepare"
+  "home" | "my-area" | "prepare"
 >;
+
+export type SavedPlace = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  alertPreferences?: AlertPreferences;
+  pushRegistration?: PushRegistration;
+};
+
+export type PushRegistration = {
+  subscriptionId: string;
+  managementSecret: string;
+  deliveryEnabled: boolean;
+  registeredAt: string;
+};
+
+export type AlertPreferences = {
+  pushEnabledWhenAvailable: boolean;
+  minimumSeverity: "Extreme" | "Severe" | "Moderate" | "Any";
+  includeUpdates: boolean;
+};
+
+export type OfficialAlert = {
+  id: string;
+  event: string;
+  headline: string | null;
+  description: string | null;
+  instruction: string | null;
+  areaDescription: string | null;
+  severity: string;
+  urgency: string;
+  certainty: string;
+  status: string | null;
+  messageType: string | null;
+  response: string | null;
+  category: string[];
+  sentAt: string | null;
+  effectiveAt: string | null;
+  onsetAt: string | null;
+  expiresAt: string | null;
+  endsAt: string | null;
+  senderName: string;
+  sourceUrl: string | null;
+  affectedZones: string[];
+  references: string[];
+};
+
+export type AlertFeedState = {
+  status: "idle" | "loading" | "live" | "cached" | "unavailable";
+  stale: boolean;
+  alerts: OfficialAlert[];
+  fetchedAt: string | null;
+  error: string | null;
+  lifecycleEvents: AlertLifecycleEvent[];
+};
+
+export type AlertLifecycleKind = "new" | "updated" | "cancelled" | "expired";
+
+export type AlertLifecycleEvent = {
+  kind: AlertLifecycleKind;
+  alertId: string;
+  event: string;
+  observedAt: string;
+};
+
+export type AlertSnapshot = {
+  alerts: OfficialAlert[];
+  fetchedAt: string;
+};
 
 export type ForecastPoint = {
   time: string;
@@ -91,6 +162,40 @@ export type LiveStorm = {
             coordinates: number[][][][];
           };
     };
+  } | null;
+  officialWindFields?: {
+    advisoryNumber: string | null;
+    issuedAt: string | null;
+    sourceUrl: string;
+    frames: Array<{
+      forecastHour: number | null;
+      validAt: string | null;
+      center: {
+        latitude: number | null;
+        longitude: number | null;
+      };
+      zones: Array<{
+        thresholdKnots: 34 | 50 | 64;
+        thresholdMph: number;
+        feature: {
+          type: "Feature";
+          properties: {
+            source: string;
+            product: string;
+            thresholdKnots: number;
+          };
+          geometry:
+            | {
+                type: "Polygon";
+                coordinates: number[][][];
+              }
+            | {
+                type: "MultiPolygon";
+                coordinates: number[][][][];
+              };
+        };
+      }>;
+    }>;
   } | null;
   forecastPoints?: Array<{
     validAt: string | null;
