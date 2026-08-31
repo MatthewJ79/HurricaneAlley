@@ -8,3 +8,6 @@ server/.cache/
 .env
 .env.*
 !.env.database.example
+
+# Local Netlify folder
+.netlify

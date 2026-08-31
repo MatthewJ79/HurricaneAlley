@@ -10,7 +10,7 @@ type StormApiResponse = {
 
 function defaultApiBaseUrl() {
   if (Platform.OS === "android") return "http://10.0.2.2:8787";
-  if (Platform.OS === "web") return "http://127.0.0.1:8787";
+  if (Platform.OS === "web") return "/api";
   return "http://localhost:8787";
 }
 
