@@ -1,5 +1,7 @@
 const NWS_ALERTS_URL = "https://api.weather.gov/alerts/active";
 
+const ALERT_GEOMETRY_TYPES = new Set(["Polygon", "MultiPolygon"]);
+
 function textOrNull(value) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -17,6 +19,20 @@ function alertReferences(value) {
       typeof item === "string" ? item : textOrNull(item?.identifier),
     )
     .filter(Boolean);
+}
+
+function alertGeometry(value) {
+  return value && ALERT_GEOMETRY_TYPES.has(value.type) && Array.isArray(value.coordinates)
+    ? value
+    : null;
+}
+
+export function parseAlertArea(value) {
+  const area = String(value ?? "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(area)) {
+    throw new TypeError("A valid two-letter alert area is required");
+  }
+  return area;
 }
 
 export function parseAlertPoint(latitudeValue, longitudeValue) {
@@ -70,6 +86,7 @@ export function normalizeNwsAlert(feature) {
     sourceUrl: textOrNull(properties.web) ?? textOrNull(feature?.id),
     affectedZones: stringList(properties.affectedZones),
     references: alertReferences(properties.references),
+    geometry: alertGeometry(feature?.geometry),
   };
 }
 
@@ -114,4 +131,36 @@ export async function fetchPointAlerts({
   }
 
   return normalizeNwsAlerts(await response.json(), point);
+}
+
+export async function fetchAreaAlerts({ area: areaValue, fetchImpl = fetch, signal } = {}) {
+  const area = parseAlertArea(areaValue);
+  const url = `${NWS_ALERTS_URL}?area=${encodeURIComponent(area)}`;
+  const response = await fetchImpl(url, {
+    headers: {
+      Accept: "application/geo+json",
+      "User-Agent": "HurricaneAlley/0.1 (hurricanealley.app)",
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`NWS alerts service returned HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (!payload || !Array.isArray(payload.features)) {
+    throw new TypeError("NWS alerts response is missing features");
+  }
+  const fetchedAt = new Date().toISOString();
+  return {
+    source: {
+      name: "NOAA National Weather Service",
+      url,
+      fetchedAt,
+    },
+    area,
+    location: null,
+    alerts: payload.features.map(normalizeNwsAlert),
+  };
 }

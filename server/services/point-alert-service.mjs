@@ -1,4 +1,4 @@
-import { fetchPointAlerts } from "../nws-alerts.mjs";
+import { fetchAreaAlerts, fetchPointAlerts, parseAlertArea } from "../nws-alerts.mjs";
 import { withRequestTimeout } from "../lib/timeout.mjs";
 
 export class PointAlertService {
@@ -29,6 +29,45 @@ export class PointAlertService {
     try {
       const data = await withRequestTimeout(
         (signal) => fetchPointAlerts({ ...point, signal }),
+        this.timeoutMs,
+      );
+      this.cache.set(key, { cachedAt: Date.now(), data });
+      return {
+        ...data,
+        status: "live",
+        stale: false,
+        lastAttemptAt: attemptedAt,
+        lastError: null,
+      };
+    } catch (error) {
+      if (!cached) throw error;
+      return {
+        ...cached.data,
+        status: "cached",
+        stale: true,
+        lastAttemptAt: attemptedAt,
+        lastError: String(error?.message ?? error),
+      };
+    }
+  }
+
+  async alertsForArea(areaValue) {
+    const area = parseAlertArea(areaValue);
+    const key = `area:${area}`;
+    const cached = this.cache.get(key);
+    const attemptedAt = new Date().toISOString();
+    if (cached && Date.now() - cached.cachedAt < this.cacheTtlMs) {
+      return {
+        ...cached.data,
+        status: "live",
+        stale: false,
+        lastAttemptAt: attemptedAt,
+        lastError: null,
+      };
+    }
+    try {
+      const data = await withRequestTimeout(
+        (signal) => fetchAreaAlerts({ area, signal }),
         this.timeoutMs,
       );
       this.cache.set(key, { cachedAt: Date.now(), data });

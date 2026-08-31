@@ -56,6 +56,10 @@ export type OfficialAlert = {
   sourceUrl: string | null;
   affectedZones: string[];
   references: string[];
+  geometry:
+    | { type: "Polygon"; coordinates: number[][][] }
+    | { type: "MultiPolygon"; coordinates: number[][][][] }
+    | null;
 };
 
 export type AlertFeedState = {

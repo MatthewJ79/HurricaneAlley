@@ -1,5 +1,5 @@
 import { json } from "../lib/http.mjs";
-import { parseAlertPoint } from "../nws-alerts.mjs";
+import { parseAlertArea, parseAlertPoint } from "../nws-alerts.mjs";
 
 export async function handleStormRoute(response, url, stormFeed, alertService) {
   if (url.pathname === "/v1/storms") {
@@ -16,18 +16,24 @@ export async function handleStormRoute(response, url, stormFeed, alertService) {
   }
 
   if (url.pathname === "/v1/alerts") {
-    let point;
+    const areaValue = url.searchParams.get("area");
+    let scope;
     try {
-      point = parseAlertPoint(
-        url.searchParams.get("lat"),
-        url.searchParams.get("lon"),
-      );
+      scope = areaValue
+        ? { area: parseAlertArea(areaValue) }
+        : { point: parseAlertPoint(
+          url.searchParams.get("lat"),
+          url.searchParams.get("lon"),
+        ) };
     } catch (error) {
       json(response, 400, { error: error.message });
       return true;
     }
     try {
-      json(response, 200, await alertService.alertsForPoint(point));
+      const result = scope.area
+        ? await alertService.alertsForArea(scope.area)
+        : await alertService.alertsForPoint(scope.point);
+      json(response, 200, result);
     } catch (error) {
       json(response, 502, {
         error: "Official alerts are temporarily unavailable",

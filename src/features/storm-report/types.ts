@@ -12,5 +12,5 @@ export const reportViews: Array<{
 }> = [
   { id: "Summary", icon: "pulse-outline", label: "Summary" },
   { id: "Models", icon: "analytics-outline", label: "Models" },
-  { id: "Alerts", icon: "warning-outline", label: "Alerts & products" },
+  { id: "Alerts", icon: "warning-outline", label: "Alerts" },
 ];

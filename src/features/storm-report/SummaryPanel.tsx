@@ -22,7 +22,7 @@ export function SummaryPanel({ storm }: { storm: LiveStorm }) {
               {hasWarning ? "Official watch or warning product published" : "No storm-specific NHC watch/warning layer"}
             </Text>
             <Text style={[styles.statusText, { color: theme.textMuted }]}>
-              Open Alerts & Products for affected locations and the complete official advisory record.
+              Open Alerts to see every affected area, official instructions, and location matches.
             </Text>
           </View>
         </View>

@@ -191,6 +191,10 @@
   vertical-align: baseline !important;
 }
 
+.leaflet-interactive {
+  pointer-events: auto !important;
+}
+
 .forecast-callout-card {
   box-sizing: border-box;
   position: relative;

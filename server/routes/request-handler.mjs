@@ -7,7 +7,7 @@ const ROUTES = [
   "/health",
   "/v1/storms",
   "/v1/storms/:id",
-  "/v1/alerts?lat=:latitude&lon=:longitude",
+  "/v1/alerts?lat=:latitude&lon=:longitude|area=:state",
   "POST /v1/push/subscriptions",
   "GET|DELETE /v1/push/subscriptions/:id",
   "/v1/satellite/:source/:time/:z/:y/:x.png",

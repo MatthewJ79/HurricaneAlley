@@ -9,7 +9,8 @@ export type AlertApiResponse = {
     url: string;
     fetchedAt: string;
   };
-  location: { latitude: number; longitude: number };
+  location: { latitude: number; longitude: number } | null;
+  area?: string;
   alerts: OfficialAlert[];
   lastAttemptAt: string;
   lastError: string | null;
@@ -30,6 +31,18 @@ export async function getAlertsForPlace(
 
   if (!response.ok) {
     throw new Error(`Hurricane Alley alerts API returned ${response.status}`);
+  }
+  return (await response.json()) as AlertApiResponse;
+}
+
+export async function getAlertsForArea(area: string, signal?: AbortSignal) {
+  const params = new URLSearchParams({ area });
+  const response = await fetch(`${API_BASE_URL}/v1/alerts?${params}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Hurricane Alley regional alerts API returned ${response.status}`);
   }
   return (await response.json()) as AlertApiResponse;
 }

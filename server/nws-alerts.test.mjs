@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  fetchAreaAlerts,
   normalizeNwsAlerts,
+  parseAlertArea,
   parseAlertPoint,
 } from "./nws-alerts.mjs";
 
@@ -15,12 +17,21 @@ test("validates an alert lookup point", () => {
   assert.throws(() => parseAlertPoint(null, null), /valid latitude/);
 });
 
+test("validates a regional alert area", () => {
+  assert.equal(parseAlertArea("hi"), "HI");
+  assert.throws(() => parseAlertArea("Hawaii"), /two-letter/);
+});
+
 test("normalizes official NWS alert fields needed for lifecycle handling", () => {
   const result = normalizeNwsAlerts(
     {
       features: [
         {
           id: "https://api.weather.gov/alerts/abc",
+          geometry: {
+            type: "Polygon",
+            coordinates: [[[-156, 19], [-155, 19], [-155, 20], [-156, 19]]],
+          },
           properties: {
             event: "Hurricane Warning",
             headline: "Hurricane Warning issued July 31",
@@ -50,7 +61,25 @@ test("normalizes official NWS alert fields needed for lifecycle handling", () =>
   assert.equal(result.alerts[0].severity, "Extreme");
   assert.equal(result.alerts[0].senderName, "NWS Miami FL");
   assert.deepEqual(result.alerts[0].references, ["prior-alert-id"]);
+  assert.equal(result.alerts[0].geometry.type, "Polygon");
   assert.equal(result.source.fetchedAt, "2026-07-31T16:01:00.000Z");
+});
+
+test("loads every active alert for a two-letter area", async () => {
+  const result = await fetchAreaAlerts({
+    area: "HI",
+    fetchImpl: async (url) => ({
+      ok: true,
+      json: async () => ({
+        features: [{ id: "alert-1", properties: { event: "Hurricane Warning" } }],
+      }),
+      url,
+    }),
+  });
+  assert.equal(result.area, "HI");
+  assert.equal(result.location, null);
+  assert.equal(result.alerts[0].event, "Hurricane Warning");
+  assert.match(result.source.url, /area=HI/);
 });
 
 test("rejects malformed NWS alert envelopes", () => {
